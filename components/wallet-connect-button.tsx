@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useConnectWallet,
   useDisconnectWallet,
   useWallet,
   useWalletConnection,
@@ -15,25 +16,30 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { LogOut, Wallet } from 'lucide-react';
+import { LogOut, Wallet, Loader2 } from 'lucide-react';
 import { WalletConnector } from '@solana/client';
 import { cn } from '@/lib/utils';
 
-// 1. FIX: Automatically inherit ALL props from your existing Button component
-// This fixes the "Property 'variant' does not exist" error.
 type WalletButtonProps = React.ComponentProps<typeof Button>;
 
 export default function WalletConnectButton({
   className,
-  variant = 'outline', // Default styling
+  variant = 'outline',
   children,
-  ...props // Captures onClick, size, and anything else passed
+  ...props
 }: WalletButtonProps) {
   const wallets = useWalletConnection();
   const wallet = useWallet();
+
+  // 1. RESTORED: The connect hook
+  const connectWallet = useConnectWallet();
   const disconnectWallet = useDisconnectWallet();
 
   const [detected, setDetected] = useState<WalletConnector[]>([]);
+
+  // 2. RESTORED: State for connection handling
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function truncate(address: string) {
     return `${address.slice(0, 4)}…${address.slice(-4)}`;
@@ -44,8 +50,22 @@ export default function WalletConnectButton({
     ? wallet.session.account.address.toString()
     : null;
 
+  // 3. RESTORED: The async handler function
+  async function handleConnect(connectorId: string) {
+    try {
+      setIsConnecting(true);
+      setError(null);
+      // Pass autoConnect: true if you want it to remember the choice next time
+      await connectWallet(connectorId);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Unable to connect');
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
   useEffect(() => {
-    // Filter only installed wallets
     const validWallets = wallets.connectors.filter(
       (wallet) => wallet.ready === true,
     );
@@ -55,16 +75,21 @@ export default function WalletConnectButton({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* 2. FIX: Pass '...props' to the Button so it receives the variant/size */}
         <Button
           variant={variant}
           className={cn('flex items-center gap-2', className)}
+          disabled={isConnecting} // Disable button while connecting
           {...props}>
-          <Wallet className='h-4 w-4' />
+          {/* Show Loader if connecting, otherwise Wallet Icon */}
+          {isConnecting ? (
+            <Loader2 className='h-4 w-4 animate-spin' />
+          ) : (
+            <Wallet className='h-4 w-4' />
+          )}
+
           {isConnected && address ? (
             <span className='font-mono'>{truncate(address)}</span>
           ) : (
-            // If text is passed (like "Start Tipping"), show it. Else default.
             <span>{children || 'Connect Wallet'}</span>
           )}
         </Button>
@@ -73,6 +98,13 @@ export default function WalletConnectButton({
       <DropdownMenuContent
         align='end'
         className='w-[--radix-popper-anchor-width]'>
+        {/* Error Message Display (Optional but helpful) */}
+        {error && (
+          <div className='p-2 text-xs text-red-500 bg-red-50 mb-1 rounded-sm'>
+            {error}
+          </div>
+        )}
+
         {isConnected && address ? (
           // CONNECTED STATE
           <div className='p-1'>
@@ -93,7 +125,7 @@ export default function WalletConnectButton({
             </DropdownMenuItem>
           </div>
         ) : (
-          // DISCONNECTED STATE (Wallet List)
+          // DISCONNECTED STATE
           <>
             <DropdownMenuLabel>Available Wallets</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -112,7 +144,8 @@ export default function WalletConnectButton({
               detected.map((wallet) => (
                 <DropdownMenuItem
                   key={wallet.id || wallet.name}
-                  onClick={() => wallet.connect()}
+                  // 4. RESTORED: Using handleConnect instead of direct call
+                  onClick={() => handleConnect(wallet.id)}
                   className='cursor-pointer flex items-center justify-between'>
                   <span className='font-medium'>{wallet.name}</span>
                   {wallet.icon && (

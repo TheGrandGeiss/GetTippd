@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"       // Standard provider name
+  output   = "../lib/generated/prisma" // Your custom output path
+}
+
+datasource db {
+  provider  = "postgresql"
+  
+
+}
+
+// --- Add your models below (Example) ---
+
+model User {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  walletAddress String   @unique 
+  username      String   @unique
+  displayName   String?
+  bio           String?
+  tipsReceived  Tip[]    @relation("ReceivedTips")
+}
+
+model Tip {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
+  amount        Float    
+  senderAddress String?  
+  message       String?
+  recipientId   String
+  recipient     User     @relation("ReceivedTips", fields: [recipientId], references: [id])
+}

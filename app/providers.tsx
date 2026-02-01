@@ -5,8 +5,8 @@ import { SolanaProvider } from '@solana/react-hooks';
 
 const defaultConfig: SolanaClientConfig = {
   cluster: 'devnet',
-  rpc: 'https://solana-devnet.g.alchemy.com/v2/7VbrG1JnDRWuH9EzVfIud',
-  websocket: 'wss://solana-devnet.g.alchemy.com/v2/7VbrG1JnDRWuH9EzVfIud',
+  rpc: `https://solana-devnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+  websocket: `wss://solana-devnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
   walletConnectors: autoDiscover(),
 };
 
